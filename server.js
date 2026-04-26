@@ -7,29 +7,22 @@ const app       = express();
 const port      = process.env.PORT || 3000;
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// ── Body parser (resume text can be large) ───────────────────────────
+// ── Trust Railway's proxy ────────────────────────────────────────────
+app.set('trust proxy', 1);
+
+// ── Body parser ──────────────────────────────────────────────────────
 app.use(express.json({ limit: '2mb' }));
 
-// ── CORS — must allow Chrome extension origins ───────────────────────
+// ── CORS ─────────────────────────────────────────────────────────────
 app.use((req, res, next) => {
-  const origin = req.headers.origin || '';
-  // Allow Chrome extensions and local dev
-  if (origin.startsWith('chrome-extension://') || origin === '' || origin === 'null') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(204);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
-// ── Rate limiting — 100 req per IP per 15 min ────────────────────────
+// ── Rate limiting ────────────────────────────────────────────────────
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -71,7 +64,7 @@ Description: ${(snippet || '').slice(0, 500)}`;
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001', // Haiku is fast + cheap for feed scoring
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 120,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -126,7 +119,7 @@ Scoring: 75-100=apply, 50-74=consider, 0-49=skip.`;
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514', // Sonnet for deep analysis
+      model: 'claude-sonnet-4-5',
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }]
     });
